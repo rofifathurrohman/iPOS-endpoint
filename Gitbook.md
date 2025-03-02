@@ -167,3 +167,29 @@ curl -X GET http://localhost:5000/reports/stock-in -H "Authorization: Bearer YOU
 ```sh
 curl -X GET http://localhost:5000/reports/stock-out -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
 ```
+
+### Laporan Penjualan Berdasarkan Rentang Tanggal
+```sh
+curl -X GET "http://localhost:5000/reports/sales/date-range?start_date=2024-01-01&end_date=2024-02-01" -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+
+### Laporan Penjualan Per Kategori
+```sh
+curl -X GET http://localhost:5000/reports/sales/category -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+
+### Laporan Stok Rendah (Produk Hampir Habis)
+```sh
+curl -X GET "http://localhost:5000/reports/stock/low?threshold=5" -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+
+### Laporan Keuntungan (Laba Rugi)
+```sh
+curl -X GET http://localhost:5000/reports/profit -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+
+### Ekspor Laporan ke CSV
+```sh
+curl -X GET http://localhost:5000/reports/export/csv -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+

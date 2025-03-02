@@ -29,6 +29,7 @@ db.serialize(() => {
       name TEXT NOT NULL,
       category_id INTEGER,
       unit TEXT NOT NULL,
+      cost_price INTEGER NOT NULL,
       price INTEGER NOT NULL,
       stock INTEGER NOT NULL,
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
