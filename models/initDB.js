@@ -24,14 +24,15 @@ db.serialize(() => {
     address TEXT
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    category TEXT NOT NULL,
-    unit TEXT NOT NULL,
-    price REAL NOT NULL,
-    stock INTEGER NOT NULL
-  )`);
+    db.run(`CREATE TABLE IF NOT EXISTS products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category_id INTEGER,
+      unit TEXT NOT NULL,
+      price INTEGER NOT NULL,
+      stock INTEGER NOT NULL,
+      FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+    )`);  
 
   db.run(`CREATE TABLE IF NOT EXISTS transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,9 +52,6 @@ db.serialize(() => {
     FOREIGN KEY (product_id) REFERENCES products (id)
   )`);
 
-  console.log("All tables initialized successfully.");
-});
-
   db.run(`CREATE TABLE IF NOT EXISTS stock_in (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_id INTEGER,
@@ -69,5 +67,13 @@ db.serialize(() => {
     date_removed TEXT NOT NULL,
     FOREIGN KEY (product_id) REFERENCES products (id)
   )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL
+  )`);
+
+  console.log("All tables initialized successfully.");
+});
 
 module.exports = db;

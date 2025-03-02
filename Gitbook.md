@@ -59,7 +59,7 @@ curl -X DELETE http://localhost:5000/suppliers/1 -H "Authorization: Bearer YOUR_
 ## Manajemen Produk (Hanya Admin)
 ### Tambah Produk
 ```sh
-curl -X POST http://localhost:5000/products -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_ADMIN_TOKEN" -d "{\"name\":\"Produk A\",\"category\":\"Elektronik\",\"unit\":\"pcs\",\"price\":10000,\"stock\":50}"
+curl -X POST http://localhost:5000/products -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_ADMIN_TOKEN" -d "{\"name\":\"Laptop Asus\",\"category_id\":1,\"unit\":\"pcs\",\"price\":12000000,\"stock\":5}"
 ```
 
 ### Melihat Semua Produk
@@ -69,12 +69,35 @@ curl -X GET http://localhost:5000/products -H "Authorization: Bearer YOUR_ADMIN_
 
 ### Update Produk
 ```sh
-curl -X PUT http://localhost:5000/products/1 -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_ADMIN_TOKEN" -d "{\"name\":\"Produk Baru\",\"category\":\"Elektronik\",\"unit\":\"pcs\",\"price\":15000,\"stock\":40}"
+curl -X PUT http://localhost:5000/products/1 -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_ADMIN_TOKEN" -d "{\"name\":\"Laptop HP\",\"category_id\":2,\"unit\":\"pcs\",\"price\":13000000,\"stock\":4}"
 ```
 
 ### Hapus Produk
 ```sh
 curl -X DELETE http://localhost:5000/products/1 -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+
+-------------------------------------------------------------
+
+## Manajemen Kategori Produk (Hanya Admin)
+### Tambah Kategori
+```sh
+curl -X POST http://localhost:5000/categories -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_ADMIN_TOKEN" -d "{\"name\":\"Elektronik\"}"
+```
+
+### Melihat Semua Kategori
+```sh
+curl -X GET http://localhost:5000/categories -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+
+### Update Kategori
+```sh
+curl -X PUT http://localhost:5000/categories/1 -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_ADMIN_TOKEN" -d "{\"name\":\"Elektronik Baru\"}"
+```
+
+### Hapus Kategori
+```sh
+curl -X DELETE http://localhost:5000/categories/1 -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
 ```
 
 -------------------------------------------------------------
@@ -106,4 +129,41 @@ curl -X GET http://localhost:5000/reports/sales -H "Authorization: Bearer YOUR_T
 ### Laporan Stok (Hanya Admin)
 ```sh
 curl -X GET http://localhost:5000/reports/stock -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+
+## Manajemen Retur Barang (Admin & Kasir)
+### Tambah Retur Barang
+```sh
+curl -X POST http://localhost:5000/returns -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_TOKEN" -d "{\"transaction_id\":1,\"product_id\":2,\"quantity\":1}"
+```
+
+-------------------------------------------------------------
+
+## Cetak Struk (Admin & Kasir)
+### Generate Struk PDF
+```sh
+curl -X POST http://localhost:5000/receipt -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_TOKEN" -d "{\"transaction_id\":1,\"customer_name\":\"Budi\",\"total_price\":50000,\"items\":[{\"product_name\":\"Produk A\",\"quantity\":2,\"price\":25000}]}"
+```
+
+-------------------------------------------------------------
+
+## Laporan Tambahan (Admin)
+### Laporan Produk Terlaris
+```sh
+curl -X GET http://localhost:5000/reports/top-products -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+
+### Laporan Penjualan Bulanan
+```sh
+curl -X GET http://localhost:5000/reports/monthly-sales -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+
+### Laporan Stok Masuk
+```sh
+curl -X GET http://localhost:5000/reports/stock-in -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+```
+
+### Laporan Stok Keluar
+```sh
+curl -X GET http://localhost:5000/reports/stock-out -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
 ```
