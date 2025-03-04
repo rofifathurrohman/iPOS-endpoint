@@ -2,63 +2,61 @@ const db = require("../config/database");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// Mendapatkan semua pengguna berdasarkan role
+// Mendapatkan semua pengguna (Admin, Staff Admin, Staff)
 exports.getAllUsers = (req, res) => {
-  let query = "SELECT id, name, email, role, created_by FROM users";
-  const params = [];
+  const { role } = req.user;  // Get the role from the token
 
-  // Jika Staff Admin, hanya bisa melihat Staff & Kasir yang dibuatnya
-  if (req.user.role === "staff_admin") {
-    query += " WHERE created_by = ?";
-    params.push(req.user.id);
+  let query = "SELECT id, name, email, role FROM users";
+
+  if (role === "staff_admin") {
+    // Staff Admin can only see "staff" and "kasir"
+    query += " WHERE role IN ('staff', 'kasir')";
+  } else if (role === "staff") {
+    // Staff can only see other staff
+    query += " WHERE role = 'kasir'";
   }
 
-  db.all(query, params, (err, rows) => {
+  db.all(query, [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
 };
 
-// Menambahkan pengguna baru
+// Menambahkan pengguna baru (Admin, Staff Admin hanya bisa membuat Staff)
 exports.addUser = async (req, res) => {
-  console.log("Received data:", req.body); // 🔍 Cek data yang dikirim
-
   const { name, email, password, role } = req.body;
-  
+  const { role: userRole } = req.user; // Get the role from the token
+
+  // Staff Admin can only create "staff" and "kasir"
+  if (userRole === "staff_admin" && !["staff", "kasir"].includes(role)) {
+    return res.status(403).json({ error: "Staff Admin can only create staff or kasir users." });
+  }
+
   if (!name || !email || !password || !role) {
     return res.status(400).json({ error: "Semua field harus diisi!" });
   }
 
-  if (req.user.role === "staff_admin" && (role === "admin" || role === "staff_admin")) {
-    return res.status(403).json({ error: "Staff Admin hanya bisa membuat Staff dan Kasir!" });
-  }
-
-  const createdBy = req.user.role === "staff_admin" ? req.user.id : null;
   const hashedPassword = await bcrypt.hash(password, 12);
 
   db.run(
-    "INSERT INTO users (name, email, password, role, created_by) VALUES (?, ?, ?, ?, ?)",
-    [name, email, hashedPassword, role, createdBy],
+    "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
+    [name, email, hashedPassword, role],
     function (err) {
       if (err) return res.status(400).json({ error: "Email sudah digunakan!" });
-      res.json({ message: "User berhasil ditambahkan!", id: this.lastID, name, email, role, createdBy });
+      res.json({ message: "User berhasil ditambahkan!", id: this.lastID, name, email, role });
     }
   );
 };
 
-// Update User
+// Update User (Hanya Admin dan Staff Admin)
 exports.updateUser = async (req, res) => {
   const { name, email, password, role } = req.body;
   const { id } = req.params;
+  const { role: userRole } = req.user; // Get the role from the token
 
-  // Staff Admin tidak bisa mengubah Admin
-  if (req.user.role === "staff_admin") {
-    db.get("SELECT role FROM users WHERE id = ?", [id], (err, user) => {
-      if (err || !user) return res.status(400).json({ error: "User tidak ditemukan!" });
-      if (user.role === "admin") {
-        return res.status(403).json({ error: "Staff Admin tidak dapat mengubah Admin!" });
-      }
-    });
+  // Only Admin and Staff Admin can edit roles
+  if (userRole === "staff") {
+    return res.status(403).json({ error: "Staff cannot update user roles." });
   }
 
   let hashedPassword = password ? await bcrypt.hash(password, 10) : null;
@@ -73,18 +71,13 @@ exports.updateUser = async (req, res) => {
   );
 };
 
-// Menghapus pengguna
+// Menghapus pengguna (Hanya Admin)
 exports.deleteUser = (req, res) => {
   const { id } = req.params;
+  const { role } = req.user; // Get the role from the token
 
-  // Staff Admin hanya bisa menghapus Staff dan Kasir yang dibuatnya
-  if (req.user.role === "staff_admin") {
-    db.get("SELECT created_by FROM users WHERE id = ?", [id], (err, user) => {
-      if (err || !user) return res.status(400).json({ error: "User tidak ditemukan!" });
-      if (user.created_by !== req.user.id) {
-        return res.status(403).json({ error: "Anda hanya dapat menghapus pengguna yang Anda buat!" });
-      }
-    });
+  if (role === "staff") {
+    return res.status(403).json({ error: "Staff cannot delete users." });
   }
 
   db.run("DELETE FROM users WHERE id = ?", [id], function (err) {
