@@ -5,9 +5,31 @@ const authorizeRole = require("../middleware/role");
 
 const router = express.Router();
 
-router.get("/", authenticateToken, authorizeRole("admin"), getAllSuppliers);
-router.post("/", authenticateToken, authorizeRole("admin"), addSupplier);
-router.put("/:id", authenticateToken, authorizeRole("admin"), updateSupplier);
-router.delete("/:id", authenticateToken, authorizeRole("admin"), deleteSupplier);
+// Get all suppliers (Staff Admin and Staff only)
+router.get("/", authenticateToken, authorizeRole(["staff_admin", "staff"]), getAllSuppliers);
+
+// Add a new supplier (Only Staff Admin and Staff can add)
+router.post(
+  "/",
+  authenticateToken,
+  authorizeRole(["staff_admin", "staff"]),
+  addSupplier
+);
+
+// Update a supplier (Only Staff Admin and Staff can update)
+router.put(
+  "/:id",
+  authenticateToken,
+  authorizeRole(["staff_admin", "staff"]),
+  updateSupplier
+);
+
+// Delete a supplier (Only Staff Admin and Staff can delete)
+router.delete(
+  "/:id",
+  authenticateToken,
+  authorizeRole(["staff_admin", "staff"]),
+  deleteSupplier
+);
 
 module.exports = router;
