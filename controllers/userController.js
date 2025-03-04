@@ -2,38 +2,64 @@ const db = require("../config/database");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// Mendapatkan semua pengguna (Hanya Admin)
+// Mendapatkan semua pengguna berdasarkan role
 exports.getAllUsers = (req, res) => {
-  db.all("SELECT id, name, email, role FROM users", [], (err, rows) => {
+  let query = "SELECT id, name, email, role, created_by FROM users";
+  const params = [];
+
+  // Jika Staff Admin, hanya bisa melihat Staff & Kasir yang dibuatnya
+  if (req.user.role === "staff_admin") {
+    query += " WHERE created_by = ?";
+    params.push(req.user.id);
+  }
+
+  db.all(query, params, (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
 };
 
-// Menambahkan pengguna baru (Hanya Admin)
+// Menambahkan pengguna baru
 exports.addUser = async (req, res) => {
-  const { name, email, password, role } = req.body;
+  console.log("Received data:", req.body); // 🔍 Cek data yang dikirim
 
+  const { name, email, password, role } = req.body;
+  
   if (!name || !email || !password || !role) {
     return res.status(400).json({ error: "Semua field harus diisi!" });
   }
 
+  if (req.user.role === "staff_admin" && (role === "admin" || role === "staff_admin")) {
+    return res.status(403).json({ error: "Staff Admin hanya bisa membuat Staff dan Kasir!" });
+  }
+
+  const createdBy = req.user.role === "staff_admin" ? req.user.id : null;
   const hashedPassword = await bcrypt.hash(password, 12);
 
   db.run(
-    "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
-    [name, email, hashedPassword, role],
+    "INSERT INTO users (name, email, password, role, created_by) VALUES (?, ?, ?, ?, ?)",
+    [name, email, hashedPassword, role, createdBy],
     function (err) {
       if (err) return res.status(400).json({ error: "Email sudah digunakan!" });
-      res.json({ message: "User berhasil ditambahkan!", id: this.lastID, name, email, role });
+      res.json({ message: "User berhasil ditambahkan!", id: this.lastID, name, email, role, createdBy });
     }
   );
 };
 
-// Update User (Hanya Admin)
+// Update User
 exports.updateUser = async (req, res) => {
   const { name, email, password, role } = req.body;
   const { id } = req.params;
+
+  // Staff Admin tidak bisa mengubah Admin
+  if (req.user.role === "staff_admin") {
+    db.get("SELECT role FROM users WHERE id = ?", [id], (err, user) => {
+      if (err || !user) return res.status(400).json({ error: "User tidak ditemukan!" });
+      if (user.role === "admin") {
+        return res.status(403).json({ error: "Staff Admin tidak dapat mengubah Admin!" });
+      }
+    });
+  }
 
   let hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
@@ -47,9 +73,19 @@ exports.updateUser = async (req, res) => {
   );
 };
 
-// Menghapus pengguna (Hanya Admin)
+// Menghapus pengguna
 exports.deleteUser = (req, res) => {
   const { id } = req.params;
+
+  // Staff Admin hanya bisa menghapus Staff dan Kasir yang dibuatnya
+  if (req.user.role === "staff_admin") {
+    db.get("SELECT created_by FROM users WHERE id = ?", [id], (err, user) => {
+      if (err || !user) return res.status(400).json({ error: "User tidak ditemukan!" });
+      if (user.created_by !== req.user.id) {
+        return res.status(403).json({ error: "Anda hanya dapat menghapus pengguna yang Anda buat!" });
+      }
+    });
+  }
 
   db.run("DELETE FROM users WHERE id = ?", [id], function (err) {
     if (err) return res.status(400).json({ error: err.message });
@@ -73,4 +109,3 @@ exports.loginUser = (req, res) => {
     res.json({ token, user: { id: user.id, name: user.name, role: user.role } });
   });
 };
-
