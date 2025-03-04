@@ -5,18 +5,22 @@ const jwt = require("jsonwebtoken");
 // Mendapatkan semua pengguna (Admin, Staff Admin, Staff)
 exports.getAllUsers = (req, res) => {
   const { role } = req.user;  // Get the role from the token
+  const { id: userId } = req.user; // Get the user ID from the token
 
-  let query = "SELECT id, name, email, role FROM users";
+  let query = "SELECT id, name, email, role, created_by FROM users";
+  const params = [];
 
   if (role === "staff_admin") {
-    // Staff Admin can only see "staff" and "kasir"
-    query += " WHERE role IN ('staff', 'kasir')";
+    // Staff Admin can only see "staff" and "kasir" that they created
+    query += " WHERE (role IN ('staff', 'kasir')) AND created_by = ?";
+    params.push(userId);
   } else if (role === "staff") {
-    // Staff can only see other staff
+    // Staff can only see "kasir"
     query += " WHERE role = 'kasir'";
   }
 
-  db.all(query, [], (err, rows) => {
+  // Execute the query with the appropriate parameters
+  db.all(query, params, (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
@@ -36,14 +40,17 @@ exports.addUser = async (req, res) => {
     return res.status(400).json({ error: "Semua field harus diisi!" });
   }
 
+  // If it's Admin, allow linking to a Staff Admin
+  const createdBy = userRole === "staff_admin" ? req.user.id : req.body.created_by || null;  // For Admin, link to specified Staff Admin
+
   const hashedPassword = await bcrypt.hash(password, 12);
 
   db.run(
-    "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
-    [name, email, hashedPassword, role],
+    "INSERT INTO users (name, email, password, role, created_by) VALUES (?, ?, ?, ?, ?)",
+    [name, email, hashedPassword, role, createdBy],
     function (err) {
       if (err) return res.status(400).json({ error: "Email sudah digunakan!" });
-      res.json({ message: "User berhasil ditambahkan!", id: this.lastID, name, email, role });
+      res.json({ message: "User berhasil ditambahkan!", id: this.lastID, name, email, role, createdBy });
     }
   );
 };

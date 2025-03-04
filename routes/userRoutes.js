@@ -4,10 +4,10 @@ const authenticateToken = require("../middleware/auth");
 const authorizeRole = require("../middleware/role");
 
 const router = express.Router();
-
-// Hanya Admin yang bisa mengelola user
-router.get("/", authenticateToken, authorizeRole(["admin", "staff_admin", "staff"]), getAllUsers);
 const { body } = require("express-validator");
+
+// Mendapatkan daftar pengguna
+router.get("/", authenticateToken, authorizeRole(["admin", "staff_admin", "staff"]), getAllUsers);
 
 router.post("/", [
     body("name").isLength({ min: 3 }).trim().escape(),
@@ -15,11 +15,11 @@ router.post("/", [
     body("password").isLength({ min: 6 }).withMessage("Password minimal 6 karakter"),
     body("role").isIn(["admin", "kasir", "staff_admin", "staff"]).withMessage("Role harus admin, kasir, staff_admin, atau staff"),
   ],
-  authenticateToken, authorizeRole("admin"), addUser
+  authenticateToken, authorizeRole(["admin", "staff_admin"]), addUser
 );
 
 router.put("/:id", authenticateToken, authorizeRole(["admin", "staff_admin"]), updateUser);
-router.delete("/:id", authenticateToken, authorizeRole("admin"), deleteUser);
+router.delete("/:id", authenticateToken, authorizeRole(["admin", "staff_admin"]), deleteUser);
 
 // Login User (Bisa diakses oleh semua pengguna)
 router.post("/login", loginUser);
