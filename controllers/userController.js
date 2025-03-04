@@ -2,17 +2,35 @@ const db = require("../config/database");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// Mendapatkan semua pengguna (Hanya Admin)
+// Mendapatkan semua pengguna (Admin, Staff Admin, Staff)
 exports.getAllUsers = (req, res) => {
-  db.all("SELECT id, name, email, role FROM users", [], (err, rows) => {
+  const { role } = req.user;  // Get the role from the token
+
+  let query = "SELECT id, name, email, role FROM users";
+
+  if (role === "staff_admin") {
+    // Staff Admin can only see "staff" and "kasir"
+    query += " WHERE role IN ('staff', 'kasir')";
+  } else if (role === "staff") {
+    // Staff can only see other staff
+    query += " WHERE role = 'kasir'";
+  }
+
+  db.all(query, [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
 };
 
-// Menambahkan pengguna baru (Hanya Admin)
+// Menambahkan pengguna baru (Admin, Staff Admin hanya bisa membuat Staff)
 exports.addUser = async (req, res) => {
   const { name, email, password, role } = req.body;
+  const { role: userRole } = req.user; // Get the role from the token
+
+  // Staff Admin can only create "staff" and "kasir"
+  if (userRole === "staff_admin" && !["staff", "kasir"].includes(role)) {
+    return res.status(403).json({ error: "Staff Admin can only create staff or kasir users." });
+  }
 
   if (!name || !email || !password || !role) {
     return res.status(400).json({ error: "Semua field harus diisi!" });
@@ -30,10 +48,16 @@ exports.addUser = async (req, res) => {
   );
 };
 
-// Update User (Hanya Admin)
+// Update User (Hanya Admin dan Staff Admin)
 exports.updateUser = async (req, res) => {
   const { name, email, password, role } = req.body;
   const { id } = req.params;
+  const { role: userRole } = req.user; // Get the role from the token
+
+  // Only Admin and Staff Admin can edit roles
+  if (userRole === "staff") {
+    return res.status(403).json({ error: "Staff cannot update user roles." });
+  }
 
   let hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
@@ -50,6 +74,11 @@ exports.updateUser = async (req, res) => {
 // Menghapus pengguna (Hanya Admin)
 exports.deleteUser = (req, res) => {
   const { id } = req.params;
+  const { role } = req.user; // Get the role from the token
+
+  if (role === "staff") {
+    return res.status(403).json({ error: "Staff cannot delete users." });
+  }
 
   db.run("DELETE FROM users WHERE id = ?", [id], function (err) {
     if (err) return res.status(400).json({ error: err.message });
@@ -73,4 +102,3 @@ exports.loginUser = (req, res) => {
     res.json({ token, user: { id: user.id, name: user.name, role: user.role } });
   });
 };
-
