@@ -7,7 +7,7 @@
 - **Kasir**: `kasir@example.com` | **Password**: `password123`
 
 ```sh
-curl -X POST http://localhost:5000/users/login -H "Content-Type: application/json" -d "{\"email\":\"admin@example.com\",\"password\":\"password123\"}"
+curl -X POST http://localhost:5000/users/login -H "Content-Type: application/json" -d "{\"email\":\"staffadmin22@example.com\",\"password\":\"password123\"}"
 ```
 
 ## Manajemen Pengguna (Hanya Admin)

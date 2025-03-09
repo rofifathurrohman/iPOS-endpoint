@@ -5,39 +5,32 @@ const moment = require("moment-timezone");
 exports.getAllSuppliers = (req, res) => {
   const { role, id: userId } = req.user;  // Get role and user ID from token
 
-  let query = "SELECT id, name, contact, address, created_by, created_at FROM suppliers";
+  let query = `
+    SELECT suppliers.id, suppliers.name, suppliers.contact, suppliers.address, suppliers.created_by, suppliers.created_at, users.name AS created_by_name
+    FROM suppliers
+    LEFT JOIN users ON suppliers.created_by = users.id
+  `;
   const params = [];
 
-  if (role === "staff_admin") {
-    // Staff Admin can see their own suppliers and the ones linked to their staff
-    query += " WHERE created_by = ? OR created_by IN (SELECT id FROM users WHERE created_by = ?)";
-    params.push(userId, userId); // Fetch suppliers created by the Staff Admin or linked to them
-  } else if (role === "staff") {
-    // Staff can see suppliers created by their own Staff Admin or created by themselves
-    query += " WHERE created_by = ? OR created_by IN (SELECT id FROM users WHERE created_by = ?)";
-    params.push(userId, userId); // Fetch suppliers created by the staff's Staff Admin or by the staff themselves
+  if (role === "staff_admin" || role === "staff") {
+    // Both Staff Admin and Staff can see all data (created by them and their linked staff)
+    query += " WHERE suppliers.created_by = ? OR suppliers.created_by IN (SELECT id FROM users WHERE created_by = ?)";
+    params.push(userId, userId); // Fetch suppliers created by the user or by their linked staff
   }
 
   // Execute the query with the appropriate parameters
   db.all(query, params, (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    // Retrieve all users (Staff Admins) and include their name
-    db.all("SELECT id, name FROM users WHERE role = 'staff_admin'", [], (err, users) => {
-      if (err) return res.status(500).json({ error: err.message });
-
-      // Map through the suppliers and convert the created_by field to the Staff Admin's name
-      const supplierDetails = rows.map(supplier => {
-        const staffAdmin = users.find(user => user.id === supplier.created_by);
-        return {
-          ...supplier,
-          created_by_name: staffAdmin ? staffAdmin.name : "N/A",  // Display the name of the Staff Admin who created the supplier
-          created_at: moment(supplier.created_at).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss"),  // Convert to UTC+7 timezone
-        };
-      });
-
-      res.json(supplierDetails);
+    // Map through the suppliers and convert the created_by field to the Staff Admin's name
+    const supplierDetails = rows.map(supplier => {
+      return {
+        ...supplier,
+        created_at: moment(supplier.created_at).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss"),  // Convert to UTC+7 timezone
+      };
     });
+
+    res.json(supplierDetails);
   });
 };
 
@@ -89,14 +82,23 @@ exports.updateSupplier = (req, res) => {
     return res.status(400).json({ error: "All fields are required!" });
   }
 
-  db.run(
-    "UPDATE suppliers SET name = ?, contact = ?, address = ? WHERE id = ? AND created_by = ?",
-    [name, contact, address, id, userId],  // Ensure the user can only update their own suppliers
-    function (err) {
-      if (err) return res.status(400).json({ error: err.message });
-      res.json({ message: "Supplier updated successfully!" });
-    }
-  );
+  let query = "UPDATE suppliers SET name = ?, contact = ?, address = ? WHERE id = ? ";
+  const params = [name, contact, address, id];
+
+  if (role === "staff_admin") {
+    // For Staff Admin: Allow updating suppliers created by them or by their linked Staff
+    query += "AND (suppliers.created_by = ? OR suppliers.created_by IN (SELECT id FROM users WHERE created_by = ?))";
+    params.push(userId, userId);
+  } else if (role === "staff") {
+    // For Staff: Only allow updating their own suppliers
+    query += "AND suppliers.created_by = ?";
+    params.push(userId);
+  }
+
+  db.run(query, params, function (err) {
+    if (err) return res.status(400).json({ error: err.message });
+    res.json({ message: "Supplier updated successfully!" });
+  });
 };
 
 // Delete a supplier (Staff Admin and Staff only)
@@ -108,12 +110,21 @@ exports.deleteSupplier = (req, res) => {
     return res.status(403).json({ error: "Only Staff Admin and Staff can delete suppliers." });
   }
 
-  db.run(
-    "DELETE FROM suppliers WHERE id = ? AND created_by = ?",
-    [id, userId],  // Ensure the user can only delete their own suppliers
-    function (err) {
-      if (err) return res.status(400).json({ error: err.message });
-      res.json({ message: "Supplier deleted successfully!" });
-    }
-  );
+  let query = "DELETE FROM suppliers WHERE id = ? ";
+  const params = [id];
+
+  if (role === "staff_admin") {
+    // For Staff Admin: Allow deleting suppliers created by them or by their linked Staff
+    query += "AND (suppliers.created_by = ? OR suppliers.created_by IN (SELECT id FROM users WHERE created_by = ?))";
+    params.push(userId, userId);
+  } else if (role === "staff") {
+    // For Staff: Only allow deleting their own suppliers
+    query += "AND suppliers.created_by = ?";
+    params.push(userId);
+  }
+
+  db.run(query, params, function (err) {
+    if (err) return res.status(400).json({ error: err.message });
+    res.json({ message: "Supplier deleted successfully!" });
+  });
 };

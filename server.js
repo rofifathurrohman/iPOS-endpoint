@@ -15,6 +15,7 @@ const userRoutes = require("./routes/userRoutes");
 const returnRoutes = require("./routes/returnRoutes");
 const receiptRoutes = require("./routes/receiptRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
+const stockRoutes = require("./routes/stockRoutes");  // Import the stock routes
 
 const app = express();
 app.use(cors());
@@ -39,7 +40,7 @@ app.use("/users", userRoutes);
 app.use("/returns", returnRoutes);
 app.use("/receipt", receiptRoutes);
 app.use("/categories", categoryRoutes);
+app.use("/stock", stockRoutes);  // Add stock routes for stock management
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
